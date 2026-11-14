@@ -1,7 +1,9 @@
 """
 Draws the ac-stj logo, derived from the STJ logo (docs/logo/make_logo.py of the STJ standard, Apache-2.0): the same
-wireframe road with its orange racing line, and the name in the same stroked block letters: STJ, an orange
-double arrow (the converter works both ways), AC.
+wireframe road with its orange racing line, and the name in the same stroked block letters as the stj2beamng
+logo: STJ, an orange arrow with a head at both ends (the converter works both ways), AC.
+
+Licence: GPL-3.0-or-later (this repository); the STJ original it is derived from is Apache-2.0.
 
     python docs/logo/make_logo.py          # writes docs/logo/ac_stj_logo.svg
 """
@@ -89,7 +91,7 @@ R = 30                       # corner radius
 TOP, BOTTOM = 650, 820
 CELL = 125                   # outer width of a letter
 GAP = 24
-ARROW = 120
+ARROW = 150
 
 
 def glyph(ch, x0):
