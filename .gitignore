@@ -1,0 +1,6 @@
+out*/
+rt*/
+build/
+__pycache__/
+*.pyc
+docs/*.jpg

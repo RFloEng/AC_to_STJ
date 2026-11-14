@@ -1,0 +1,14 @@
+ac-stj - Assetto Corsa <-> STJ translator
+Copyright 2026 ac-stj contributors
+
+Licensed under the GNU General Public License, version 3 or later (see LICENSE).
+
+The logo (docs/logo/) is derived from the STJ logo of the STJ - Standard Track JSON
+project (https://github.com/RFloEng/STJ-Standard-Track-Json, Apache-2.0), which may be included in a GPL-3.0 project.
+
+Dependencies (not bundled): numpy (BSD-3-Clause), usd-core / OpenUSD (Pixar, Apache-2.0 based
+licence), jsonschema (MIT, only used by the STJ validator).
+
+Not affiliated with Kunos Simulazioni or Assetto Corsa, nor with the STJ project. "Assetto Corsa",
+"Kunos" and "Content Manager" are trademarks of their owners. This repository contains no game
+content; the tool converts files you already own, and its output is marked redistributable: false.

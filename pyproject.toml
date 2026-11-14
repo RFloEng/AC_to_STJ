@@ -1,0 +1,19 @@
+[project]
+name = "ac-stj"
+version = "0.1.0"
+description = "Bidirectional converter between Assetto Corsa tracks and STJ (Standard Track JSON)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "GPL-3.0-or-later" }
+dependencies = ["numpy"]
+
+[project.optional-dependencies]
+meshes = ["usd-core"]
+dev = ["jsonschema", "usd-core"]
+
+[project.scripts]
+ac-stj = "cli:main"
+
+[tool.setuptools]
+packages = ["ac_stj"]
+py-modules = ["cli"]
