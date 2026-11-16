@@ -55,3 +55,37 @@ class MeshRoundTrip(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PacenotesRoundTrip(unittest.TestCase):
+    """Rally Copilot .rc-notes <-> race.pacenotes on a synthetic file (the text layout is read from the app's source)."""
+    TEXT = ('{"version":3,"items":[RouteItem(2,3,0.5,{7,3}),RouteItem(1,1,0.1,{}),RouteItem(5,6,0.25,{}),'
+            'RouteItem(6,3,0.6,{}),RouteItem(3,0,0.7,{})],"metadata":{"name":"Test","author":"me"}}')
+
+    def test_notes(self):
+        import tempfile
+        from ac_stj.pacenotes import export_pacenotes, import_pacenotes, parse_rc_notes
+
+        class Rep:
+            def add(self, *a):
+                pass
+
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            (d / "stage.rc-notes").write_text(self.TEXT, encoding="utf-8")
+            doc, raw = {}, {}
+            import_pacenotes(d, 2000.0, doc, Rep(), raw)
+            notes = doc["race"]["pacenotes"]["notes"]
+            self.assertEqual([n["s"] for n in notes], [200.0, 500.0, 1000.0, 1200.0, 1400.0])
+            self.assertEqual(notes[0]["kind"], "hairpin")
+            self.assertEqual(notes[1]["kind"], "straight")
+            self.assertEqual(notes[2]["modifiers"], ["caution", "long"])
+            out = d / "out"
+            out.mkdir()
+            export_pacenotes(doc, out, 2000.0, {k.split("/")[-1]: v for k, v in raw.items()}, Rep())
+            self.assertEqual((out / "stage.rc-notes").read_text(encoding="utf-8"), self.TEXT)      # unchanged -> verbatim
+            doc["race"]["pacenotes"]["notes"][0]["s"] = 300.0                                          # edited -> regenerated
+            export_pacenotes(doc, out, 2000.0, {k.split("/")[-1]: v for k, v in raw.items()}, Rep())
+            items = parse_rc_notes((out / "stage.rc-notes").read_text(encoding="utf-8"))[0]
+            self.assertAlmostEqual(items[0]["pos"], 0.15)
+            self.assertEqual(len(items), 5)

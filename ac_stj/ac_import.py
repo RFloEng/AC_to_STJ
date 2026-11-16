@@ -381,6 +381,8 @@ def ac_to_stj(track_dir, layout=None, include_raw=True, meshes=None):
 
     doc["timing"] = timing
     doc["race"] = race
+    from .pacenotes import import_pacenotes
+    import_pacenotes(data, length, doc, report, raw)
     if include_raw:
         doc["x_assetto_corsa"] = {"track": track_dir.name, "layout": layout, "files": raw,
                                   "kn5": [p.name for p in _models_for(track_dir, layout)]}

@@ -434,6 +434,8 @@ def stj_to_ac(doc, out_dir, name=None, with_mesh=True, base_dir=None):
         if fn in raw_data:
             (lay_dir / "data" / fn).write_text(raw_data[fn], encoding="utf-8")
             report.add("mapped", fn, "restored verbatim from x_assetto_corsa.files")
+    from .pacenotes import export_pacenotes
+    export_pacenotes(doc, lay_dir / "data", line.length, raw_data, report)
     from .lighting import ext_config_text, lighting_ini
     sun = (doc.get("environment", {}).get("lighting") or {}).get("sun") or {}
     if sun.get("direction"):

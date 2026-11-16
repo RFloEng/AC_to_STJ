@@ -76,13 +76,19 @@ Needs `usd-core`.
 - **Mesh flags**: visible / cast-shadow / transparent / layer / LOD in-out are stored on each USD prim (`x_assetto_corsa`) and written back to the kn5. `AC_POBJECT_*` meshes are tagged `physics_object`; their behaviour is not described.
 - **Shaders**: the original shader name, props and texture slots are kept per material and restored. `txMaps` G is read as gloss (roughness = 1 - G, assumed). `ksMultilayer*` also gets a MaterialX OpenPBR layer-blend network (txMask RGBA x tiled txDetailR/G/B/A x magicMult); it has not been rendered.
 
+## Pacenotes (CSP Rally Copilot)
+`data/*.rc-notes` <-> `race.pacenotes` (first file) and `race.pacenote_sets` (others). Turns, hairpins, straights (length), jumps/overcrests,
+narrows, bridges and surface changes map to STJ kinds, Copilot hints (cut, long, tightens, caution...) to modifiers, positions
+(fractions of the track) to `s`. AC's 1-6 turn scale (1 = hairpin) becomes kind `hairpin` plus severity 2-6; keep left/right and extras
+map to kind `other`. Each item also stays in the note's `x_assetto_corsa`, and the file text is restored unchanged while the notes are unchanged.
+
 ## Not done yet (honest list)
 - Shaders: detail normal maps, fresnel and reflection variants are only kept as data (not rendered in USD); the MaterialX network is untested;
   blended materials trigger the validator's "opacity without opacityThreshold" warning; no skinned meshes; LODs are kept as per-prim
   ranges, not as STJ `lods[]` prototypes; AC_POBJECT physics props and `KS_START_LIGHT` meshes are not mapped to scenery / `start_procedure.lights`.
 - Sun heading convention, light colour/brightness conversion and the tracks rebuilt with lights/cameras are not yet verified in-game.
-- Pacenotes: STJ has `race.pacenotes` (and `pacenote_sets`); AC's CSP Rally Copilot reads `*.rc-notes` from the layout's `data` folder
-  or generates notes itself. Neither is mapped yet; `.rc-notes` files are not carried at all.
+- Pacenotes: only hand-made `*.rc-notes` in the layout's `data` folder are converted. Notes Rally Copilot generates in game, or keeps in the
+  user's config folder, are not. The `.rc-notes` text layout was taken from the app's source and tested on a synthetic file only; no real file was available.
 - OpenDRIVE-only references, layouts/routes/variants, terrain, `ai_hints` mapping.
 
 ## In-game test (2026-11-13/14)
