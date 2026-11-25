@@ -164,37 +164,50 @@ def draw_map(path, ac_pts, ini_path, pit_pts=None):
                               f"X_OFFSET={xo:.3f}\nZ_OFFSET={zo:.3f}\nDRAWING_SIZE=10\n", encoding="utf-8")
 
 
+STD_KEYS = {"ROAD", "PITLANE", "PAVEMENT", "KERB", "GRASS", "SAND", "DIRT", "GRAVEL", "WATER", "SNOW", "WALL", "LOOSE"}
+# STJ class -> the KEY Assetto Corsa and Custom Shaders Patch (Surfaces FX, rally gravel/dirt behaviour) know by name
+CLASS_KEY = {"asphalt": "ROAD", "concrete": "PAVEMENT", "kerb": "KERB", "painted_line": "ROAD", "cobblestone": "PAVEMENT",
+             "grass": "GRASS", "artificial_grass": "GRASS", "dirt": "DIRT", "gravel": "GRAVEL", "sand": "SAND", "mud": "LOOSE",
+             "snow": "SNOW", "ice": "SNOW", "rock": "WALL", "water": "WATER", "metal": "ROAD", "wood": "PAVEMENT",
+             "wall": "WALL", "other": "GRASS"}
+
+
 def surf_ini(lib, raw_ini, report):
-    """surfaces.ini from the surface library. Sections of a source surfaces.ini with the same KEY are reused."""
+    """surfaces.ini from the surface library.
+
+    Grip is left to AC and Custom Shaders Patch (Surfaces FX): every STJ surface maps to one of the standard KEYs they recognise
+    (ROAD, PAVEMENT, GRASS, DIRT, GRAVEL, SAND, LOOSE, SNOW, WATER, WALL, KERB, PITLANE) with that KEY's usual friction, and the
+    STJ friction numbers (LMUX/LMUY) are not written. Surfaces that share a KEY share one section. A surface that comes from an
+    AC file keeps its original section."""
     raw = {}
     if raw_ini:
         cp = read_ini_text(raw_ini)
         for sec in cp.sections():
             raw[cp[sec].get("KEY", "").upper()] = dict(cp[sec])
-    out, keys = [], {}
+    sections, keys = {}, {}
     for sid_, s in lib.items():
         cls = s.get("class", "other")
-        key0, fr0, valid0 = CLASS_DEFAULT.get(cls, CLASS_DEFAULT["other"])
-        key = (s.get("name") or key0).upper().replace(" ", "_")
-        if key in keys.values():
-            key = key + "_" + sid_.upper()
-        keys[sid_] = key
-        d = dict(raw.get(key, {})) or {"KEY": key, "FRICTION": fr0, "DAMPING": 0, "WAV": "", "WAV_PITCH": 0,
-                                       "FF_EFFECT": "NULL", "DIRT_ADDITIVE": 0, "BLACK_FLAG_TIME": 0,
-                                       "IS_VALID_TRACK": valid0, "SIN_HEIGHT": 0, "SIN_LENGTH": 0, "IS_PITLANE": 0,
-                                       "VIBRATION_GAIN": 0, "VIBRATION_LENGTH": 0}
-        d["KEY"] = key
-        mf = s.get("mf_scaling") or {}
-        if "LMUX" in mf or "LMUY" in mf:
-            d["FRICTION"] = round((mf.get("LMUX", 1.0) + mf.get("LMUY", mf.get("LMUX", 1.0))) / 2, 4)
-        if "track_limits" in s:
-            d["IS_VALID_TRACK"] = 1 if s["track_limits"] == "inside" else 0
+        name = (s.get("name") or "").upper().replace(" ", "_")
+        key = name if (name in STD_KEYS or name in raw) else CLASS_KEY.get(cls, "GRASS")
         if s.get("pit_lane"):
-            d["IS_PITLANE"] = 1
-        out.append(d)
-    text = "\n".join("[SURFACE_%d]\n" % i + "\n".join(f"{k}={v}" for k, v in d.items()) + "\n" for i, d in enumerate(out))
-    report.add("approximated", "surfaces.ini", "friction = mean of LMUX/LMUY; wet_response, roughness, deformable, "
-                                                "by_tyre_class have no AC equivalent")
+            key = "PITLANE"
+        keys[sid_] = key
+        _, fr0, valid0 = CLASS_DEFAULT.get(cls, CLASS_DEFAULT["other"])
+        d = sections.get(key) or dict(raw.get(key, {})) or {"KEY": key, "FRICTION": fr0, "DAMPING": 0, "WAV": "", "WAV_PITCH": 0,
+                                                            "FF_EFFECT": "NULL", "DIRT_ADDITIVE": 0, "BLACK_FLAG_TIME": 0,
+                                                            "IS_VALID_TRACK": valid0, "SIN_HEIGHT": 0, "SIN_LENGTH": 0,
+                                                            "IS_PITLANE": 0, "VIBRATION_GAIN": 0, "VIBRATION_LENGTH": 0}
+        d["KEY"] = key
+        if key not in raw:
+            if key in ("GRASS", "SAND", "DIRT", "GRAVEL", "WATER", "SNOW", "WALL", "LOOSE") and s.get("track_limits", "outside") != "inside":
+                d["IS_VALID_TRACK"] = 0
+            if key == "PITLANE":
+                d["IS_PITLANE"] = 1
+        sections[key] = d
+    text = "\n".join("[SURFACE_%d]\n" % i + "\n".join(f"{k}={v}" for k, v in d.items()) + "\n"
+                     for i, d in enumerate(sections.values()))
+    report.add("mapped", "surfaces.ini", f"{len(lib)} STJ surfaces -> {len(sections)} standard AC/CSP surface KEYs "
+                                         f"({', '.join(sections)}); grip is left to AC and CSP Surfaces FX, STJ LMUX/LMUY not written")
     return text, keys
 
 
@@ -287,7 +300,7 @@ def build_meshes(doc, line, keys, visual, physics, step=3.0):
 
 
 # ── main entry ───────────────────────────────────────────────────────────────
-def stj_to_ac(doc, out_dir, name=None, with_mesh=True, base_dir=None):
+def stj_to_ac(doc, out_dir, name=None, with_mesh=True, base_dir=None, instance_radius=0.0, instance_budget=12e6):
     report = _Report()
     line = Line(doc)
     ac = doc.get("x_assetto_corsa", {})
@@ -501,7 +514,7 @@ def stj_to_ac(doc, out_dir, name=None, with_mesh=True, base_dir=None):
         used_usd = False
         if base_dir is not None and doc.get("geometry", {}).get("meshes"):
             from .usd_import import usd_to_kn5
-            nv, nc, has_col = usd_to_kn5(doc, base_dir, keys, visual, physics, report)
+            nv, nc, has_col = usd_to_kn5(doc, base_dir, keys, visual, physics, report, instance_radius=instance_radius, instance_budget=instance_budget)
             used_usd = nv + nc > 0
             if used_usd:
                 report.add("mapped", "kn5", f"{nv} visual + {nc} collision meshes from the USD files of geometry.meshes "

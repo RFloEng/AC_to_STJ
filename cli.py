@@ -36,7 +36,7 @@ def cmd_to_stj(a):
 def cmd_to_ac(a):
     from ac_stj.ac_export import stj_to_ac
     doc = json.loads(Path(a.stj).read_text(encoding="utf-8"))
-    dest, rep = stj_to_ac(doc, Path(a.out), name=a.name, with_mesh=not a.no_mesh, base_dir=Path(a.stj).resolve().parent)
+    dest, rep = stj_to_ac(doc, Path(a.out), name=a.name, with_mesh=not a.no_mesh, instance_radius=a.instance_radius, instance_budget=a.instance_budget * 1e6, base_dir=Path(a.stj).resolve().parent)
     print(f"{dest}  ({rep.counts()})")
 
 
@@ -65,6 +65,12 @@ def main(argv=None):
     p.add_argument("-o", "--out", required=True)
     p.add_argument("--name")
     p.add_argument("--no-mesh", action="store_true", help="skip the generated kn5 road mesh")
+    p.add_argument("--instance-radius", type=float, default=0.0, metavar="M",
+                   help="USD point instancers are baked into the kn5 (AC has no instancing): keep only placements within M metres "
+                        "of the reference line (default 0 = no limit besides the budget)")
+    p.add_argument("--instance-budget", type=float, default=12.0, metavar="MVERTS",
+                   help="cap on instanced vertices baked, in millions; the placements nearest the reference line are kept "
+                        "(default 12, 0 = unlimited; a big DR2 stage is 170 M, about 18 GB of kn5)")
     p.set_defaults(fn=cmd_to_ac)
     p = sub.add_parser("list")
     p.add_argument("root")
