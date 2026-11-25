@@ -82,6 +82,23 @@ narrows, bridges and surface changes map to STJ kinds, Copilot hints (cut, long,
 (fractions of the track) to `s`. AC's 1-6 turn scale (1 = hairpin) becomes kind `hairpin` plus severity 2-6; keep left/right and extras
 map to kind `other`. Each item also stays in the note's `x_assetto_corsa`, and the file text is restored unchanged while the notes are unchanged.
 
+## Big stages (DiRT Rally 2 style STJ -> AC, added 2026-11-24)
+Tested with `dr2 australia_rally_01_route_0` (STJ from another converter) built to AC and driven in game.
+- **Instancers**: AC has no instancing, so each `UsdGeomPointInstancer` placement is baked into meshes (<= 60,000 vertices each, uint16 indices).
+  A vertex budget keeps the kn5 usable: `--instance-budget MVERTS` (default 12, 0 = unlimited) keeps the placements nearest to the reference line first;
+  `--instance-radius M` limits by distance. Left-out placements are counted in the conversion report. LOD in/out from `stj:lodIn/lodOut`.
+- **Two-sided meshes** (`doubleSided`, e.g. foliage) get a reversed copy of the triangles, because AC culls back faces. Opacity with `opacityThreshold`
+  becomes `ksPerPixelAT` + `ksAlphaRef`; opacity without it becomes `ksPerPixelAlpha`.
+- **Materials per GeomSubset**: a mesh whose materials are bound on subsets is split per subset.
+- **Ground layers** (`ground.layers/materials`, `vertex_top3`): AC has no layer blend on arbitrary meshes, so each triangle takes its dominant layer's
+  material. Edges are hard (approximation, reported).
+- **Decals** (role `decal`): kept exactly at their STJ position (no lift). They are flagged transparent, put on a later layer and do not cast shadows,
+  which is a draw-order hint only: z-fighting with the terrain is possible. The STJ spec (section 7) lets an engine apply `decal.depth_offset`
+  (default 0.02 m); this tool does not use it.
+- **Surfaces**: STJ surface classes map to the standard AC/CSP `surfaces.ini` KEYs (ROAD, PITLANE, KERB, GRASS, SAND, DIRT, GRAVEL, WATER, SNOW, WALL, ...).
+  Grip is left to AC and CSP Surfaces FX (`extension/config/surfaces_fx.ini`), not written from STJ friction values.
+- Not verified in game: that the decal draw-order hint removes flicker, and pit lane / AI for stages (the source has no pit path).
+
 ## Not done yet (honest list)
 - Shaders: detail normal maps, fresnel and reflection variants are only kept as data (not rendered in USD); the MaterialX network is untested;
   blended materials trigger the validator's "opacity without opacityThreshold" warning; no skinned meshes; LODs are kept as per-prim
@@ -89,7 +106,8 @@ map to kind `other`. Each item also stays in the note's `x_assetto_corsa`, and t
 - Sun heading convention, light colour/brightness conversion and the tracks rebuilt with lights/cameras are not yet verified in-game.
 - Pacenotes: only hand-made `*.rc-notes` in the layout's `data` folder are converted. Notes Rally Copilot generates in game, or keeps in the
   user's config folder, are not. The `.rc-notes` text layout was taken from the app's source and tested on a synthetic file only; no real file was available.
-- OpenDRIVE-only references, layouts/routes/variants, terrain, `ai_hints` mapping.
+- OpenDRIVE-only references, layouts/routes/variants, smooth terrain layer blending, `ai_hints` mapping.
+- Prop textures of stages whose STJ shares one material name (`body`, `glass`, `wheels`) across all props come out wrong; that is a source-file problem.
 
 ## In-game test (2026-11-13/14)
 Vallelunga Classic, STJ -> AC with USD meshes and textures, installed as `stj_test_vallelunga`: loads in AC 1.x + CSP, renders with
